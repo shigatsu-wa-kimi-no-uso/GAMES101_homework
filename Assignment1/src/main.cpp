@@ -47,21 +47,25 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
     // TODO: Implement this function
     // Create the model matrix for rotating the triangle around the Z axis.
     // Then return it.
-    Eigen::Matrix4f trans,rotation;
+    Eigen::Matrix4f trans,rotation,trans2;
     trans <<
         1, 0, 0, 0,
-        0, 1, 0, -1,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1;
+    trans2 <<
+        1, 0, 0, 0,
+        0, 1, 0, 0,
         0, 0, 1, 0,
         0, 0, 0, 1;
 
-
     rotation = get_rotation(Vector3f(0, 0, 1), rotation_angle);
-    model = trans.inverse() * rotation * trans;
+    model = trans2 * trans.inverse() * rotation * trans ;
     return model;
 }
 
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
-                                      float zNear, float zFar)
+    float zNear, float zFar)
 {
     // Students will implement this function
 
@@ -70,8 +74,12 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
     // TODO: Implement this function
     // Create the projection matrix for the given parameters.
     // Then return it.
-    float l = -3, r = 3, b = -3, t = 3, f = -10, n = 0;
-    Eigen::Matrix4f ortho, trans,scale;
+    float f = -zFar, n = -zNear;
+    float t = std::tan(MY_PI * (eye_fov/2.0) / 180.0) * std::abs(n);
+    float b = -t, r = t*aspect_ratio, l = -r;
+    std::cout << "f="<<f << " n=" << n << " b=" << b << " t=" << t << " l=" << l << " r=" << r << "\n";
+    Eigen::Matrix4f ortho, trans, scale, persp2ortho;
+    //l = -3, r = 3, b = -3, t = 3;
     scale <<
         2 / (r - l), 0, 0, 0,
         0, 2 / (t - b), 0, 0,
@@ -82,8 +90,13 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
         0, 1, 0, -(t + b) / 2,
         0, 0, 1, -(n + f) / 2,
         0, 0, 0, 1;
+    persp2ortho <<
+        n, 0, 0, 0,
+        0, n, 0, 0,
+        0, 0, n + f, -(n * f),
+        0, 0, 1, 0;
     ortho = scale * trans;
-    projection = ortho;
+    projection = ortho * persp2ortho;
     return projection;
 }
 
@@ -147,7 +160,7 @@ int main(int argc, const char** argv)
         cv::imshow("image", image);
         key = cv::waitKey(10);
 
-        std::cout << "frame count: " << frame_count++ << '\n';
+        std::cout << "frame count: " << frame_count++ << "key: "<< key << '\n';
 
         if (key == 'a') {
             angle += 10;

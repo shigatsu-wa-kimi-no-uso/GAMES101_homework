@@ -161,6 +161,7 @@ void rst::rasterizer::draw(rst::pos_buf_id pos_buffer, rst::ind_buf_id ind_buffe
 
         for (auto & vert : v)
         {
+            std::cout << "x y z in canonical: " << vert.x() << " " << vert.y() << " " << vert.z() << "\n";
             vert.x() = 0.5*width*(vert.x()+1.0);
             vert.y() = 0.5*height*(vert.y()+1.0);
             vert.z() = vert.z() * f1 + f2;
@@ -179,6 +180,12 @@ void rst::rasterizer::draw(rst::pos_buf_id pos_buffer, rst::ind_buf_id ind_buffe
 
         rasterize_wireframe(t);
     }
+
+
+}
+
+void rst::rasterizer::rasterize_line(const Eigen::Vector3f& begin, const Eigen::Vector3f& end) {
+    draw_line(begin, end);
 }
 
 void rst::rasterizer::rasterize_wireframe(const Triangle& t)
@@ -217,8 +224,8 @@ void rst::rasterizer::clear(rst::Buffers buff)
 
 rst::rasterizer::rasterizer(int w, int h) : width(w), height(h)
 {
-    frame_buf.resize(w * h);
-    depth_buf.resize(w * h);
+    frame_buf.resize((w + 1) * (h + 1));
+    depth_buf.resize((w + 1) * (h + 1));
 }
 
 int rst::rasterizer::get_index(int x, int y)
@@ -232,6 +239,7 @@ void rst::rasterizer::set_pixel(const Eigen::Vector3f& point, const Eigen::Vecto
     if (point.x() < 0 || point.x() >= width ||
         point.y() < 0 || point.y() >= height) return;
     auto ind = (height-point.y())*width + point.x();
+   // if(ind < frame_buf.size())
     frame_buf[ind] = color;
 }
 
