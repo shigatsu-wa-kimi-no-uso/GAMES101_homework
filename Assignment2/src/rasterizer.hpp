@@ -15,7 +15,8 @@ namespace rst
     enum class Buffers
     {
         Color = 1,
-        Depth = 2
+        Depth = 2,
+        Depth_SSAA = 4
     };
 
     inline Buffers operator|(Buffers a, Buffers b)
@@ -79,6 +80,9 @@ namespace rst
 
         void rasterize_triangle(const Triangle& t);
 
+        void shade(int x, int y, const Triangle& t);
+        void shade_with_ssaa(int x, int y, const Triangle& t);
+
         // VERTEX SHADER -> MVP -> Clipping -> /.W -> VIEWPORT -> DRAWLINE/DRAWTRI -> FRAGSHADER
 
     private:
@@ -93,6 +97,7 @@ namespace rst
         std::vector<Eigen::Vector3f> frame_buf;
 
         std::vector<float> depth_buf;
+        std::vector<Eigen::Vector4f> depth_buf_ssaa; //应用SSAA的Z-buffer,4x4时,每个像素对应4个子像素的深度
         int get_index(int x, int y);
 
         int width, height;

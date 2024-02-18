@@ -126,7 +126,7 @@ int main(int argc, const char** argv)
 
     while(key != 27)
     {
-        r.clear(rst::Buffers::Color | rst::Buffers::Depth);
+        r.clear(rst::Buffers::Color | rst::Buffers::Depth | rst::Buffers::Depth_SSAA);
 
         r.set_model(get_model_matrix(angle));
         r.set_view(get_view_matrix(eye_pos));
