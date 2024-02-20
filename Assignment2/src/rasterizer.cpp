@@ -5,10 +5,9 @@
 
 #include <algorithm>
 #include <vector>
-#include "rasterizer.hpp"
 #include <opencv2/opencv.hpp>
 #include <math.h>
-
+#include "rasterizer.hpp"
 
 rst::pos_buf_id rst::rasterizer::load_positions(const std::vector<Eigen::Vector3f> &positions)
 {
@@ -84,6 +83,7 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
     for (auto& i : ind)
     {
         Triangle t;
+
         Eigen::Vector4f v[] = {
                 mvp * to_vec4(buf[i[0]], 1.0f),
                 mvp * to_vec4(buf[i[1]], 1.0f),
@@ -143,8 +143,8 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     int btn = *std::min_element(coordy.begin(), coordy.end()); //float -> int
     for (int x = lft; x <= rgt; x++) {
         for (int y = btn; y <= top; y++) {
-            //shade(x, y, t);
-            shade_with_ssaa(x, y, t);
+            //rasterize(x, y, t);
+            rasterize_with_ssaa(x, y, t);
         }
     }
 
@@ -152,10 +152,9 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
 
 
 
-void rst::rasterizer::shade(int x, int y, const Triangle& t) {
+void rst::rasterizer::rasterize(int x, int y, const Triangle& t) {
     // using 4x4 super-sampling anti-aliasing
     // 像素中点为(x,y)
-    Vector2f subpixels[4] = { Vector2f(x - 0.25,y - 0.25),Vector2f(x + 0.25,y - 0.25),Vector2f(x - 0.25,y + 0.25),Vector2f(x + 0.25,y + 0.25) };
     auto v = t.toVector4();
     int index = get_index(x, y);
     if (insideTriangle(x /* + 0.5 */, y /* + 0.5 */, t.v)) {
@@ -171,7 +170,7 @@ void rst::rasterizer::shade(int x, int y, const Triangle& t) {
     }
 }
 
-void rst::rasterizer::shade_with_ssaa(int x,int y, const Triangle& t) {
+void rst::rasterizer::rasterize_with_ssaa(int x,int y, const Triangle& t) {
     // using 4x4 super-sampling anti-aliasing
     // 像素中点为(x,y),则一个像素中4个子像素位置分别为(x-0.25,y-0.25),....
     Vector2f subpixels[4] = { Vector2f(x - 0.25,y - 0.25),Vector2f(x + 0.25,y - 0.25),Vector2f(x - 0.25,y + 0.25),Vector2f(x + 0.25,y + 0.25) };
