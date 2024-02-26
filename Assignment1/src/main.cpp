@@ -25,6 +25,7 @@ Eigen::Matrix4f get_rotation(Vector3f axis, float angle)
 {
     Eigen::Matrix3f rotation;
     Eigen::Matrix4f r4;
+    axis.normalize();
     float nx = axis.x(), ny = axis.y(), nz = axis.z();
     float cosa = std::cos(MY_PI*angle/180), sina = std::sin(MY_PI*angle/180);
     rotation <<
@@ -59,8 +60,8 @@ Eigen::Matrix4f get_model_matrix(float rotation_angle)
         0, 0, 1, 0,
         0, 0, 0, 1;
 
-    rotation = get_rotation(Vector3f(0, 0, 1), rotation_angle);
-    model = trans2 * trans.inverse() * rotation * trans ;
+    rotation = get_rotation(Vector3f(-1, 1, 0), rotation_angle);
+    model = trans2 * trans.inverse() * rotation * trans;
     return model;
 }
 
@@ -105,7 +106,6 @@ int main(int argc, const char** argv)
     float angle = 0;
     bool command_line = false;
     std::string filename = "output.png";
-
     if (argc >= 3) {
         command_line = true;
         angle = std::stof(argv[2]); // -r by default

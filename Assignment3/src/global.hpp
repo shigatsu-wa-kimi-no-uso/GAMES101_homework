@@ -44,7 +44,7 @@ template<class T>
 inline T get_viewspace_bary_interpolated_value(const Eigen::Vector3f& bar, const T(&v)[3], const float(&view_vz)[3]) {
     float view_z = 1.0 / (bar.x() / view_vz[0] + bar.y() / view_vz[1] + bar.z() / view_vz[2]);
     T view_attrib = bar.x()* v[0] / view_vz[0] + bar.y() * v[1] / view_vz[1] + bar.z() * v[2] / view_vz[2];
-    return view_attrib / view_z;
+    return view_attrib * view_z;
 }
 
 

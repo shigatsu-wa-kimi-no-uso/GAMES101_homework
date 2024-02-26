@@ -72,7 +72,7 @@ namespace rst
         void set_object_loader(const objl::Loader& loader) { obj_loader = loader; }
         void set_viewport(const Eigen::Matrix4f& vp);
         void set_pixel(const Vector2i &point, const Eigen::Vector3f &color);
-
+        void set_fragment_color(const Vector2i& point,const int frag_order, const Eigen::Vector3f& color);
         void clear(Buffers buff);
 
         void draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf_id col_buffer, Primitive type);
@@ -82,10 +82,14 @@ namespace rst
 
     private:
         void draw_line(Eigen::Vector3f begin, Eigen::Vector3f end);
+        void rasterize(int x, int y, Eigen::Vector4f(&screen_coords)[3], Shader& shader);
         void rasterize_with_ssaa(int x, int y, Eigen::Vector4f(&screen_coords)[3], Shader& shader);
-        void rasterize_triangle(Eigen::Vector4f (&screen_coords)[3], Shader& shader);
-        // VERTEX SHADER -> MVP -> Clipping -> /.W -> VIEWPORT -> DRAWLINE/DRAWTRI -> FRAGSHADER
+        void rasterize_with_ssaa_optimized(int x, int y, Eigen::Vector4f(&screen_coords)[3], Shader& shader);
 
+        void rasterize_triangle(Eigen::Vector4f (&screen_coords)[3], Shader& shader);
+        void blend_color();
+        // VERTEX SHADER -> MVP -> Clipping -> /.W -> VIEWPORT -> DRAWLINE/DRAWTRI -> FRAGSHADER
+      
     private:
 
         int normal_id = -1;
@@ -103,7 +107,8 @@ namespace rst
 
         std::vector<Eigen::Vector3f> frame_buf;
         std::vector<float> depth_buf;
-        std::vector<Eigen::Vector4f> depth_buf_ssaa; //应用SSAA的Z-buffer,4x4时,每个像素对应4个子像素的深度
+        std::vector<Eigen::Matrix<float,3,4>> frame_buf_ssaa;   //3x4矩阵,列和行分别为2x2 SSAA 4个片元的RGB颜色
+        std::vector<Eigen::Vector4f> depth_buf_ssaa; //应用SSAA的Z-buffer,2x2时,每个像素对应4个子像素的深度
         int get_index(int x, int y);
 
         int width, height;

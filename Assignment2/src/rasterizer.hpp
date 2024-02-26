@@ -68,9 +68,10 @@ namespace rst
         void set_projection(const Eigen::Matrix4f& p);
 
         void set_pixel(const Eigen::Vector3f& point, const Eigen::Vector3f& color);
-
+        void set_fragment_color(const Eigen::Vector2i& point, const int frag_order, const Eigen::Vector3f& color);
         void clear(Buffers buff);
 
+        void blend_color();
         void draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf_id col_buffer, Primitive type);
 
         std::vector<Eigen::Vector3f>& frame_buffer() { return frame_buf; }
@@ -82,7 +83,7 @@ namespace rst
 
         void rasterize(int x, int y, const Triangle& t);
         void rasterize_with_ssaa(int x, int y, const Triangle& t);
-
+        void rasterize_with_ssaa_optimized(int x, int y, const Triangle& t);
         // VERTEX SHADER -> MVP -> Clipping -> /.W -> VIEWPORT -> DRAWLINE/DRAWTRI -> FRAGSHADER
 
     private:
@@ -97,7 +98,8 @@ namespace rst
         std::vector<Eigen::Vector3f> frame_buf;
 
         std::vector<float> depth_buf;
-        std::vector<Eigen::Vector4f> depth_buf_ssaa; //应用SSAA的Z-buffer,4x4时,每个像素对应4个子像素的深度
+        std::vector<Eigen::Vector4f> depth_buf_ssaa; //应用SSAA的Z-buffer,2x2时,每个像素对应4个子像素的深度
+        std::vector<Eigen::Matrix<float, 3, 4>> frame_buf_ssaa;   //3x4矩阵,列和行分别为2x2 SSAA 4个片元的RGB颜色
         int get_index(int x, int y);
 
         int width, height;
