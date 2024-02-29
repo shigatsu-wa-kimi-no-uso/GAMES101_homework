@@ -228,8 +228,6 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     return result_color * 255.f;
 }
 
-
-
 Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload& payload)
 {
     float view_vz[3] = { payload.view_coords[0].z(), payload.view_coords[1].z() ,payload.view_coords[2].z() };
@@ -274,12 +272,29 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload& payload)
     // dV = kh * kn * (h(u,v+1/h)-h(u,v))
     // Vector ln = (-dU, -dV, 1)
     // Normal n = normalize(TBN * ln)
-
+    //games论坛求法,特殊求法,非准确TBN
     Eigen::Vector3f result_color = { 0, 0, 0 };
-
+    /*
+    const Eigen::Vector3f& n = get_viewspace_bary_interpolated_value(payload.bar, payload.view_normals, view_vz).head(3).normalized();
+    auto x = n.x();
+    auto y = n.y();
+    auto z = n.z();
+    Eigen::Vector3f t1(x * y / sqrt(x * x + z * z), sqrt(x * x + z * z), z * y / sqrt(x * x + z * z));
+    Eigen::Vector3f b1 = n.cross(t1);
+    Eigen::Matrix3f TBN; //TBN矩阵: 将纹理坐标对应到模型空间中
+    TBN <<
+        t1.x(), b1.x(), n.x(),
+        t1.y(), b1.y(), n.y(),
+        t1.z(), b1.z(), n.z();
+    float u = uv.x(), v = uv.y();
+    float du = kh * kn * (h(u + 1.0 / width, v) - h(u, v));
+    float dv = kh * kn * (h(u, v + 1.0 / height) - h(u, v));
+    Eigen::Vector3f n_ts(-du, -dv, 1);
+    Eigen::Vector3f n_ws = (TBN * n_ts).normalized();
+    result_color += n_ws;*/
+    
     // [t,b]=[e1,e2][delta_u1,delta_u2]^(-1)
     for (int i = 0; i < 3;i++) {
-        //games论坛求法,特殊求法,非准确TBN
         const Eigen::Vector3f& n = normals[i].head(3).normalized();
         const Eigen::Vector3f& e1 = (view_coords[(i+1)%3] - view_coords[i]).head(3);
         const Eigen::Vector3f& e2 = (view_coords[(i+2)%3] - view_coords[i]).head(3);
@@ -291,16 +306,6 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload& payload)
         //std::cout << e1 << "\n";
         //std::cout << e2 << "\n";
         //std::cout << e << "\n";
-        auto x = n.x();
-        auto y = n.y();
-        auto z = n.z();
-        Eigen::Vector3f t1(x * y / sqrt(x * x + z * z), sqrt(x * x + z * z), z * y / sqrt(x * x + z * z));
-        Eigen::Vector3f b1 = n.cross(t1);
-        Eigen::Matrix3f TBN; //TBN矩阵: 将纹理坐标对应到模型空间中
-        TBN <<
-            t1.x(), b1.x(), n.x(),
-            t1.y(), b1.y(), n.y(),
-            t1.z(), b1.z(), n.z();
         //传统求法
         Eigen::Vector3f t = ratio * e * Eigen::Vector2f(delta_uv2.y(), -delta_uv1.y());
        // Eigen::Vector3f b = ratio * e * Eigen::Vector2f(-delta_uv2.x(),delta_uv1.x());
@@ -322,13 +327,146 @@ Eigen::Vector3f bump_fragment_shader(const fragment_shader_payload& payload)
         float du = kh * kn * (h(u + 1.0 / width, v) - h(u, v));
         float dv = kh * kn * (h(u, v + 1.0 / height) - h(u, v));
         Eigen::Vector3f n_ts(-du, -dv, 1);    
-        Eigen::Vector3f n_bs = (tbn * n_ts).normalized();
-        result_color += n_bs;
+        Eigen::Vector3f n_ws = (tbn * n_ts).normalized();
+        result_color += n_ws/3.0;
     }
- 
-    //result_color = normal;
 
-    return (result_color/3.0) * 255.f;
+    return result_color * 255.f;
+}
+
+Eigen::Vector3f displacement_fragment_shader(const fragment_shader_payload& payload)
+{
+    float view_vz[3] = { payload.view_coords[0].z(), payload.view_coords[1].z() ,payload.view_coords[2].z() };
+    Eigen::Vector3f ka = Eigen::Vector3f(0.005, 0.005, 0.005);
+    Eigen::Vector3f kd = get_viewspace_bary_interpolated_value(payload.bar, payload.colors, view_vz) / 255.0;
+    Eigen::Vector3f ks = Eigen::Vector3f(0.7937, 0.7937, 0.7937);
+
+    //Eigen::Vector3f kd = get_bary_interpolated_value(payload.bar, payload.colors) / 255.0;  //颜色归一化
+    //Eigen::Vector3f reflect_point = get_bary_interpolated_value(payload.bar, payload.view_coords).head(3);
+    //Eigen::Vector3f normal = get_bary_interpolated_value(payload.bar, payload.view_normals).head(3).normalized();
+    Eigen::Vector3f reflect_point = get_viewspace_bary_interpolated_value(payload.bar, payload.view_coords, view_vz).head(3);
+    Vector2f uv;
+    float width = 0, height = 0;
+
+    auto h = [payload](float u, float v) {
+        return payload.texture->getColor(u, v).norm();
+    };
+
+    if (payload.texture)
+    {
+        // TODO: Get the texture value at the texture coordinates of the current fragment
+        uv = get_viewspace_bary_interpolated_value(payload.bar, payload.tex_coords, view_vz);
+        width = payload.texture->width, height = payload.texture->height;
+    }
+    auto l1 = light{ {20, 20, 20}, {500, 500, 500} };
+    auto l2 = light{ {-20, 20, 0}, {500, 500, 500} };
+
+    std::vector<light> lights = { l1, l2 };
+    Eigen::Vector3f amb_light_intensity{ 10, 10, 10 };
+    Eigen::Vector3f eye_pos{ 0, 0, 10 };
+
+    float p = 150;
+
+    const Eigen::Vector3f(&colors)[3] = payload.colors;
+    const Eigen::Vector4f(&view_coords)[3] = payload.view_coords;
+    const Eigen::Vector2f(&tex_coords)[3] = payload.tex_coords;
+    const Eigen::Vector4f(&normals)[3] = payload.view_normals;
+    Eigen::Vector3f normal(0, 0, 0);
+    float kh = 0.2, kn = 0.1;
+    // float kh = 1, kn = 1;
+    // TODO: Implement displacement mapping here
+    // Let n = normal = (x, y, z)
+    // Vector t = (x*y/sqrt(x*x+z*z),sqrt(x*x+z*z),z*y/sqrt(x*x+z*z))
+    // Vector b = n cross product t
+    // Matrix TBN = [t b n]
+    // dU = kh * kn * (h(u+1/w,v)-h(u,v))
+    // dV = kh * kn * (h(u,v+1/h)-h(u,v))
+    // Vector ln = (-dU, -dV, 1)
+    // Position p = p + kn * n * h(u,v)
+    // Normal n = normalize(TBN * ln)
+    //games论坛求法,特殊求法,非准确TBN
+    
+    const Eigen::Vector3f& n = get_viewspace_bary_interpolated_value(payload.bar, payload.view_normals, view_vz).head(3).normalized();
+    /*
+    auto x = n.x();
+    auto y = n.y();
+    auto z = n.z();
+    Eigen::Vector3f t1(x * y / sqrt(x * x + z * z), sqrt(x * x + z * z), z * y / sqrt(x * x + z * z));
+    Eigen::Vector3f b1 = n.cross(t1);
+    Eigen::Matrix3f TBN; //TBN矩阵: 将纹理坐标对应到模型空间中
+    TBN <<
+        t1.x(), b1.x(), n.x(),
+        t1.y(), b1.y(), n.y(),
+        t1.z(), b1.z(), n.z();
+    float u = uv.x(), v = uv.y();
+    float du = kh * kn * (h(u + 1.0 / width, v) - h(u, v));
+    float dv = kh * kn * (h(u, v + 1.0 / height) - h(u, v));
+    Eigen::Vector3f n_ts(-du, -dv, 1);
+    Eigen::Vector3f n_ws = (TBN * n_ts).normalized();
+    normal = n_ws;
+    */
+    // [t,b]=[e1,e2][delta_u1,delta_u2]^(-1)
+    
+    for (int i = 0; i < 3; i++) {
+        const Eigen::Vector3f& n = normals[i].head(3).normalized();
+        const Eigen::Vector3f& e1 = (view_coords[(i + 1) % 3] - view_coords[i]).head(3);
+        const Eigen::Vector3f& e2 = (view_coords[(i + 2) % 3] - view_coords[i]).head(3);
+        const Eigen::Vector2f& delta_uv1 = tex_coords[(i + 1) % 3] - tex_coords[i];
+        const Eigen::Vector2f& delta_uv2 = tex_coords[(i + 2) % 3] - tex_coords[i];
+        const float ratio = 1.0 / (delta_uv1.x() * delta_uv2.y() - delta_uv2.x() * delta_uv1.y());
+        Eigen::Matrix<float, 3, 2> e;
+        e << e1, e2;
+        //std::cout << e1 << "\n";
+        //std::cout << e2 << "\n";
+        //std::cout << e << "\n";
+        //传统求法
+        Eigen::Vector3f t = ratio * e * Eigen::Vector2f(delta_uv2.y(), -delta_uv1.y());
+        // Eigen::Vector3f b = ratio * e * Eigen::Vector2f(-delta_uv2.x(),delta_uv1.x());
+        Eigen::Vector3f tp = (t - t.dot(n) * n).normalized();
+        // Eigen::Vector3f bp = (b - b.dot(n) * n - b.dot(tp) * tp).normalized();
+        Eigen::Vector3f bp = n.cross(tp).normalized();
+        // std::cout << bp << "\n" << bp2 << "\n"<< tp.cross(n).normalized();
+         //tb = e * coords.inverse();
+         //Eigen::Vector3f t = tb.col(0),b=tb.col(2);
+         //Eigen::Vector3f bp = (b - b.dot(n) * n - b.dot(tp) * tp).normalized();
+        Eigen::Matrix3f tbn;
+        tbn << tp, bp, n;
+        //std::cout << tbn << "\n" << TBN;
+        // dU = kh * kn * (h(u+1/w,v)-h(u,v))
+        // dV = kh * kn * (h(u,v+1/h)-h(u,v))
+        // Vector ln = (-dU, -dV, 1)
+        // Normal n = normalize(TBN * ln)
+        float u = uv.x(), v = uv.y();
+        float du = kh * kn * (h(u + 1.0 / width, v) - h(u, v));
+        float dv = kh * kn * (h(u, v + 1.0 / height) - h(u, v));
+        Eigen::Vector3f n_ts(-du, -dv, 1);
+        Eigen::Vector3f n_ws = (tbn * n_ts).normalized();
+        normal += n_ws;
+    }
+    normal.normalize();
+    //Position p = p + kn * n * h(u, v)
+    reflect_point += (kn * n * h(uv.x(), uv.y())); //在法线n的方向上增长 kn*h(u, v) 高度
+    Eigen::Vector3f result_color = { 0, 0, 0 };
+    Eigen::Vector3f view_vec = (Eigen::Vector3f(0, 0, 0) - reflect_point).normalized();
+    Eigen::Vector3f i_amb = ka.cwiseProduct(amb_light_intensity);
+    result_color += i_amb;
+    // I = Iamb + Idiff + Ispec = Ka*Ia + Kd*(I/r^2)*max(0,cos<normal,light>) + Ks*(I/r^2)*max(0,cos<normal,half>)^p
+    for (auto& l : lights)
+    {
+        // TODO: For each light source in the code, calculate what the *ambient*, *diffuse*, and *specular* 
+        // components are. Then, accumulate that result on the *result_color* object.
+        float r2 = (l.position - reflect_point).squaredNorm();
+        Eigen::Vector3f intensity_arrived = l.intensity / r2;
+        Eigen::Vector3f l_vec = (l.position - reflect_point).normalized();
+        Eigen::Vector3f half_vec = (view_vec + l_vec).normalized();
+        float cos_n_l = normal.dot(l_vec);
+        float cos_n_h = normal.dot(half_vec);
+        Eigen::Vector3f i_diff = kd.cwiseProduct(intensity_arrived) * std::max(0.f, cos_n_l);
+        Eigen::Vector3f i_spec = ks.cwiseProduct(intensity_arrived) * std::pow(std::max(0.f, cos_n_h), p);
+        result_color += i_diff + i_spec;
+    }
+
+    return result_color * 255.f;
 }
 
 int main(int argc, const char** argv)
@@ -360,10 +498,10 @@ int main(int argc, const char** argv)
         }
     }
 
-    auto texture_path = "hmap.jpg";
+    auto texture_path = "spot_texture.png";
     Texture texture = Texture(obj_path + texture_path);
 
-    std::function<Eigen::Vector3f(fragment_shader_payload)> active_shader = bump_fragment_shader;
+    std::function<Eigen::Vector3f(fragment_shader_payload)> active_shader = texture_fragment_shader;
 
     if (argc >= 2)
     {
