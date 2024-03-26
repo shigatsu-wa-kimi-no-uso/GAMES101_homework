@@ -141,6 +141,24 @@
     <ClCompile Include="src\Texture.cpp" />
     <ClCompile Include="src\Triangle.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="outputBump.png" />
+    <Image Include="output_1amb_10.png" />
+    <Image Include="output_3amb_0.png" />
+    <Image Include="output_3amb_10.png" />
+    <Image Include="output_bilinear.png" />
+    <Image Include="output_displacement.png" />
+    <Image Include="output_fix.png" />
+    <Image Include="output_normal_fix.png" />
+    <Image Include="output_no_aa.png" />
+    <Image Include="output_no_bilinear.png" />
+    <Image Include="output_no_ssaa.png" />
+    <Image Include="output_phong_fix.png" />
+    <Image Include="output_scr.png" />
+    <Image Include="output_screen_norm.png" />
+    <Image Include="output_SSAA.png" />
+    <Image Include="output_ssaa_fail.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

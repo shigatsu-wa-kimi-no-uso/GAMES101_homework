@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{475db42e-4f9a-4bbf-b633-f85b2fee275a}</ProjectGuid>
-    <RootNamespace>Assignment5</RootNamespace>
+    <ProjectGuid>{ba349ea4-178f-4e55-817a-338f51bc0748}</ProjectGuid>
+    <RootNamespace>Assignment6</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -104,7 +104,6 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -128,9 +127,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\AreaLight.hpp" />
+    <ClInclude Include="src\Bounds3.hpp" />
+    <ClInclude Include="src\BVH.hpp" />
     <ClInclude Include="src\global.hpp" />
+    <ClInclude Include="src\Intersection.hpp" />
     <ClInclude Include="src\Light.hpp" />
+    <ClInclude Include="src\Material.hpp" />
     <ClInclude Include="src\Object.hpp" />
+    <ClInclude Include="src\OBJ_Loader.hpp" />
+    <ClInclude Include="src\Ray.hpp" />
     <ClInclude Include="src\Renderer.hpp" />
     <ClInclude Include="src\Scene.hpp" />
     <ClInclude Include="src\Sphere.hpp" />
@@ -138,12 +144,11 @@
     <ClInclude Include="src\Vector.hpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="src\BVH.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\Scene.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="binary.ppm" />
+    <ClCompile Include="src\Vector.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

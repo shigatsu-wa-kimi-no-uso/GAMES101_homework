@@ -19,4 +19,21 @@
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="my_bezier_curve.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="my_bezier_curve-noaa.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="my_bezier_curve-withaa.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="my_bezier_curve-withaa2.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="my_bezier_curve-withaa3.png">
+      <Filter>资源文件</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

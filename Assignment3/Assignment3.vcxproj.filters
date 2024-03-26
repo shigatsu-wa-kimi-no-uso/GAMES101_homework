@@ -48,4 +48,54 @@
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="output_1amb_10.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_3amb_0.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_3amb_10.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_bilinear.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_displacement.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_fix.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_no_aa.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_no_bilinear.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_no_ssaa.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_normal_fix.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_phong_fix.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_scr.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_screen_norm.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_SSAA.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="output_ssaa_fail.png">
+      <Filter>资源文件</Filter>
+    </Image>
+    <Image Include="outputBump.png">
+      <Filter>资源文件</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

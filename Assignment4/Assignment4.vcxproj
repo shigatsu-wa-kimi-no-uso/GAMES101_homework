@@ -129,6 +129,13 @@
   <ItemGroup>
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="my_bezier_curve-noaa.png" />
+    <Image Include="my_bezier_curve-withaa.png" />
+    <Image Include="my_bezier_curve-withaa2.png" />
+    <Image Include="my_bezier_curve-withaa3.png" />
+    <Image Include="my_bezier_curve.png" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
