@@ -35,12 +35,13 @@ private:
     Eigen::Matrix4f projection;
 
 
-    fragment_shader_payload frag_shader_pl;
+    
 
     Texture texture;
     std::function<Eigen::Vector3f(fragment_shader_payload)> frag_shader_func;
 
 public:
+    fragment_shader_payload frag_shader_pl;
     Shader(){}
     void set_model(const Eigen::Matrix4f& m)
     {
@@ -65,8 +66,10 @@ public:
 
     Eigen::Vector4f vertex_shader(const vertex_shader_payload& payload)
     {
+       // std::clog << model << "\n\n" << view << "\n\n" << projection << "\n\n";
         Eigen::Vector4f obj_coord,view_coord;
         obj_coord = to_vec4(payload.object_coord,1);
+       // std::cout << view << "\n" << model << "\n" << projection;
         Eigen::Matrix4f mv = view * model;
         Eigen::Matrix4f mvIT = mv.inverse().transpose();
         view_coord = mv * obj_coord;

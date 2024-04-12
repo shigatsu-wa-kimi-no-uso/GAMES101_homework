@@ -12,12 +12,12 @@
 class Bounds3
 {
   public:
-    Vector3f pMin, pMax; // two points to specify the bounding box
+    Vector3f pMin, pMax; // two points to specify the bounding box （两点连接形成bounding box对角线）
     Bounds3()
     {
-        double minNum = std::numeric_limits<double>::lowest();
-        double maxNum = std::numeric_limits<double>::max();
-        pMax = Vector3f(minNum, minNum, minNum);
+        constexpr double minNum = std::numeric_limits<double>::lowest();
+        constexpr double maxNum = std::numeric_limits<double>::max();
+        pMax = Vector3f(minNum, minNum, minNum);  //初始包围盒
         pMin = Vector3f(maxNum, maxNum, maxNum);
     }
     Bounds3(const Vector3f p) : pMin(p), pMax(p) {}
@@ -39,13 +39,13 @@ class Bounds3
             return 2;
     }
 
-    double SurfaceArea() const
+    double SurfaceArea() const //bounding box 的表面积
     {
         Vector3f d = Diagonal();
         return 2 * (d.x * d.y + d.x * d.z + d.y * d.z);
     }
 
-    Vector3f Centroid() { return 0.5 * pMin + 0.5 * pMax; }
+    Vector3f Centroid() { return 0.5 * pMin + 0.5 * pMax; } //bounding box 的质点
     Bounds3 Intersect(const Bounds3& b)
     {
         return Bounds3(Vector3f(fmax(pMin.x, b.pMin.x), fmax(pMin.y, b.pMin.y),
@@ -65,7 +65,7 @@ class Bounds3
             o.z /= pMax.z - pMin.z;
         return o;
     }
-
+    //重叠判断,一维情况下,即区间重叠,二维即x,y两个维度均有重叠,三维即x,y,z三个维度均有重叠
     bool Overlaps(const Bounds3& b1, const Bounds3& b2)
     {
         bool x = (b1.pMax.x >= b2.pMin.x) && (b1.pMin.x <= b2.pMax.x);
@@ -96,9 +96,30 @@ inline bool Bounds3::IntersectP(const Ray& ray, const Vector3f& invDir,
     // invDir: ray direction(x,y,z), invDir=(1.0/x,1.0/y,1.0/z), use this because Multiply is faster that Division
     // dirIsNeg: ray direction(x,y,z), dirIsNeg=[int(x>0),int(y>0),int(z>0)], use this to simplify your logic
     // TODO test if ray bound intersects
-    
-}
+    Vector3f tMin = (pMin - ray.origin) * invDir;
+    Vector3f tMax = (pMax - ray.origin) * invDir;
 
+   // Vector3f tMin = Vector3f::Min(t1, t2);
+   // Vector3f tMax = Vector3f::Max(t1, t2);
+
+
+    if (dirIsNeg[0]) {
+        std::swap(tMin.x, tMax.x);
+    }
+    if (dirIsNeg[1]) {
+        std::swap(tMin.y, tMax.y);
+    }
+    if (dirIsNeg[2]) {
+        std::swap(tMin.z, tMax.z);
+    }
+    float tEnter = std::max({ tMin.x,tMin.y,tMin.z });
+    float tExit = std::min({ tMax.x,tMax.y,tMax.z });
+    if (tEnter < tExit && tExit >= 0) {
+        return true;
+    }
+    return false;
+}
+//包围盒求并
 inline Bounds3 Union(const Bounds3& b1, const Bounds3& b2)
 {
     Bounds3 ret;

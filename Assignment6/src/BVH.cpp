@@ -12,7 +12,7 @@ BVHAccel::BVHAccel(std::vector<Object*> p, int maxPrimsInNode,
     if (primitives.empty())
         return;
 
-    root = recursiveBuild(primitives);
+    root = recursiveBuild(primitives); //建立BVH
 
     time(&stop);
     double diff = difftime(stop, start);
@@ -30,30 +30,30 @@ BVHBuildNode* BVHAccel::recursiveBuild(std::vector<Object*> objects)
     BVHBuildNode* node = new BVHBuildNode();
 
     // Compute bounds of all primitives in BVH node
-    Bounds3 bounds;
-    for (int i = 0; i < objects.size(); ++i)
-        bounds = Union(bounds, objects[i]->getBounds());
+    Bounds3 bounds;  //三维包围盒
+    for (int i = 0; i < objects.size(); ++i)            //？？？为什么这个for循环要放在下面的if前面？？
+        bounds = Union(bounds, objects[i]->getBounds());  //物体(对于不规则模型一般为三角形面)的xyz最小值,和xyz最大值连接形成的对角线所对应的矩形,即为包围盒
     if (objects.size() == 1) {
         // Create leaf _BVHBuildNode_
         node->bounds = objects[0]->getBounds();
-        node->object = objects[0];
+        node->object = objects[0];  //一个bound节点只放一个物体？一个三角形面
         node->left = nullptr;
         node->right = nullptr;
         return node;
     }
     else if (objects.size() == 2) {
-        node->left = recursiveBuild(std::vector{objects[0]});
+        node->left = recursiveBuild(std::vector{objects[0]}); //objlist中只有2个物体情况下,左右节点各放一个
         node->right = recursiveBuild(std::vector{objects[1]});
 
-        node->bounds = Union(node->left->bounds, node->right->bounds);
+        node->bounds = Union(node->left->bounds, node->right->bounds); 
         return node;
     }
     else {
-        Bounds3 centroidBounds;
+        Bounds3 centroidBounds;    //多于2个基础物体的情况
         for (int i = 0; i < objects.size(); ++i)
             centroidBounds =
                 Union(centroidBounds, objects[i]->getBounds().Centroid());
-        int dim = centroidBounds.maxExtent();
+        int dim = centroidBounds.maxExtent(); //选出包围盒最长的轴作为排序轴
         switch (dim) {
         case 0:
             std::sort(objects.begin(), objects.end(), [](auto f1, auto f2) {
@@ -104,6 +104,15 @@ Intersection BVHAccel::Intersect(const Ray& ray) const
 
 Intersection BVHAccel::getIntersection(BVHBuildNode* node, const Ray& ray) const
 {
+    if (!node->bounds.IntersectP(ray, ray.direction_inv, { ray.direction.x < 0,ray.direction.y < 0,ray.direction.z < 0 })) {
+        return Intersection();
+    }
     // TODO Traverse the BVH to find intersection
-
+    if (node->object != nullptr) {
+        return node->object->getIntersection(ray);
+    }
+    Intersection i1, i2;
+    i1 = getIntersection(node->left, ray);
+    i2 = getIntersection(node->right, ray);
+    return i1.distance < i2.distance ? i1 : i2;
 }

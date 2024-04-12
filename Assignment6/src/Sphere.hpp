@@ -47,7 +47,7 @@ public:
     Intersection getIntersection(Ray ray){
         Intersection result;
         result.happened = false;
-        Vector3f L = ray.origin - center;
+        Vector3f L = ray.origin - center; 
         float a = dotProduct(ray.direction, ray.direction);
         float b = 2 * dotProduct(ray.direction, L);
         float c = dotProduct(L, L) - radius2;
@@ -61,7 +61,7 @@ public:
         result.normal = normalize(Vector3f(result.coords - center));
         result.m = this->m;
         result.obj = this;
-        result.distance = t0;
+        result.distance = t0; // 时间t * 单位向量 - 出发点  故时间数值上等于距离
         return result;
 
     }

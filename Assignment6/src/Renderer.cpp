@@ -1,7 +1,7 @@
 //
 // Created by goksu on 2/25/20.
 //
-
+#define _CRT_SECURE_NO_WARNINGS
 #include <fstream>
 #include "Scene.hpp"
 #include "Renderer.hpp"
@@ -46,7 +46,8 @@ void Renderer::Render(const Scene& scene)
             // Also, don't forget to multiply both of them with the variable
             // *scale*, and x (horizontal) variable with the *imageAspectRatio*
             Vector3f dir = normalize(Vector3f(x, y, -focal_length)); // Don't forget to normalize this direction!
-            framebuffer[m++] = castRay(eye_pos, dir, scene, 0);
+            Ray ray(eye_pos, dir, 0);
+            framebuffer[m++] = scene.castRay(ray, scene.maxDepth);
         }
         UpdateProgress(j / (float)scene.height);
     }

@@ -192,7 +192,7 @@ Eigen::Vector3f texture_fragment_shader(const fragment_shader_payload& payload)
     Eigen::Vector3f ka = Eigen::Vector3f(0.005, 0.005, 0.005);
     Eigen::Vector3f kd = texture_color / 255.f;
     Eigen::Vector3f ks = Eigen::Vector3f(0.7937, 0.7937, 0.7937);
-
+   // std::cout << kd[0] << " " << kd[1] << " " << kd[2] << "\n";
     auto l1 = light{ {20, 20, 20}, {500, 500, 500} };
     auto l2 = light{ {-20, 20, 0}, {500, 500, 500} };
 
@@ -498,10 +498,10 @@ int main(int argc, const char** argv)
         }
     }
 
-    auto texture_path = "spot_texture.png";
+    auto texture_path = "hmap.jpg";
     Texture texture = Texture(obj_path + texture_path);
 
-    std::function<Eigen::Vector3f(fragment_shader_payload)> active_shader = texture_fragment_shader;
+    std::function<Eigen::Vector3f(fragment_shader_payload)> active_shader = bump_fragment_shader;
 
     if (argc >= 2)
     {

@@ -7,7 +7,7 @@
 #include "Shader.hpp"
 #include <opencv2/opencv.hpp>
 #include <math.h>
-
+#include "global.hpp"
 
 rst::pos_buf_id rst::rasterizer::load_positions(const std::vector<Eigen::Vector3f> &positions)
 {
@@ -173,7 +173,6 @@ void rst::rasterizer::set_viewport(const Eigen::Matrix4f& vp)
 }
 
 void rst::rasterizer::draw(Shader shader) {
-
     for (auto mesh : obj_loader.LoadedMeshes)
     {
         for (int i = 0; i < mesh.Vertices.size(); i += 3)
@@ -181,6 +180,7 @@ void rst::rasterizer::draw(Shader shader) {
             Eigen::Vector4f screen_coords[3];
             for (int j = 0; j < 3; j++)
             {
+               
                 //for each vertex: Vertex Shader -> Homogeneous divide -> Viewport transform
                 //space transform: object space --MVP--> clipping space --divide by w--> NDC --viewport trans--> screen space
                 Eigen::Vector3f object_coord = to_eigen_vec3(mesh.Vertices[i + j].Position);
@@ -188,9 +188,13 @@ void rst::rasterizer::draw(Shader shader) {
                 Eigen::Vector3f normal = to_eigen_vec3(mesh.Vertices[i + j].Normal);
                 Eigen::Vector3f color = Vector3f(148, 121.0, 92.0);
                 Eigen::Vector4f clip_coord = shader.vertex_shader({ j,object_coord,tex_coord,normal,color });
+               // std::clog << viewport << "\n";
                 //ignore clipping operation
                 Eigen::Vector4f ndc_coord = clip_coord/clip_coord.w();
                 screen_coords[j] = viewport * ndc_coord;
+                //debug
+          
+             //   std::cout << cnt++ << " " << j << " " << screen_coords[j][0] << " " << screen_coords[j][1] << " " << screen_coords[j][2] << "\n";
             }
             rasterize_triangle(screen_coords,shader);
         }
@@ -233,6 +237,7 @@ void rst::rasterizer::rasterize_triangle(Eigen::Vector4f (&screen_coords)[3], Sh
     for (int x = lft; x <= rgt; x++) {
         for (int y = btn; y <= top; y++) {
             //rasterize(x, y, screen_coords, shader);
+
             rasterize_with_ssaa_optimized(x, y, screen_coords,shader);
         }
     }
@@ -244,6 +249,12 @@ void rst::rasterizer::blend_color() {
             int index = get_index(x, y);
             Eigen::Matrix<float, 3, 4>& frag_colors = frame_buf_ssaa[index];
             frame_buf[index] = (frag_colors.col(0) + frag_colors.col(1) + frag_colors.col(2) + frag_colors.col(3)) / 4.0;
+            /*
+            if (frame_buf[index] != Vector3f(0, 0, 0)) {
+                std::cout << "(" << x << "," << y << ")" << "\n";
+                std::cout << frame_buf[index][0] << " " << frame_buf[index][1] << " " << frame_buf[index][2] << "\n";
+            }*/
+
         }
     }
 }
@@ -276,8 +287,8 @@ void rst::rasterizer::rasterize(int x, int y, Eigen::Vector4f(&screen_coords)[3]
         //深度测试
         //z值以screen space为准, 不需要以view space为准
         float sub_z_interpolated = get_bary_interpolated_value(bar, { screen_coords[0].z(), screen_coords[1].z(), screen_coords[2].z() });
-            // TODO : set the current pixel (use the set_pixel function) to the color of the triangle (use getColor function) if it should be painted.
-            // 注意:z值与远近的关系需由projection和viewport变换共同决定,viewport变换后,z值越小越远,经过反转为depth值,越大越远, depth_buf初始值为无穷大
+        // TODO : set the current pixel (use the set_pixel function) to the color of the triangle (use getColor function) if it should be painted.
+        // 注意:z值与远近的关系需由projection和viewport变换共同决定,viewport变换后,z值越小越远,经过反转为depth值,越大越远, depth_buf初始值为无穷大
         float depth = -sub_z_interpolated;
         if (depth_buf[index] > depth) {
             depth_buf[index] = depth;
@@ -325,10 +336,11 @@ void rst::rasterizer::rasterize_with_ssaa_optimized(int x, int y, Eigen::Vector4
     // 像素中点为(x,y),则一个像素中4个子像素位置分别为(x-0.25,y-0.25),....
     //procedure: bounding box -> rasterize -> depth testing -> fragment shader -> write buffer
     //深度测试也可以在fragment shader过程之后
-    Eigen::Vector2f subpixels[4] = { Eigen::Vector2f(x - 0.25,y - 0.25),Eigen::Vector2f(x + 0.25,y - 0.25),Eigen::Vector2f(x - 0.25,y + 0.25),Eigen::Vector2f(x + 0.25,y + 0.25) };
+    Eigen::Vector2f subpixels[4] = { Eigen::Vector2f(x - 0.25,y - 0.25),Eigen::Vector2f(x + 0.25,y + 0.25),Eigen::Vector2f(x + 0.25,y - 0.25),Eigen::Vector2f(x - 0.25,y + 0.25) };
     Eigen::Vector3f frag_color(0, 0, 0);
     auto [alpha, beta, gamma] = computeBarycentric2D(x, y, screen_coords);
     int index = get_index(x, y);
+    fragment_shader_payload pl = shader.frag_shader_pl;
     for (int i = 0; i < 4; i++) {
         float sub_x = subpixels[i].x(), sub_y = subpixels[i].y();
         if (insideTriangle(sub_x /* + 0.5 */, sub_y /* + 0.5 */, screen_coords)) {
@@ -341,9 +353,27 @@ void rst::rasterizer::rasterize_with_ssaa_optimized(int x, int y, Eigen::Vector4
             // TODO : set the current pixel (use the set_pixel function) to the color of the triangle (use getColor function) if it should be painted.
             // 注意:z值与远近的关系需由projection和viewport变换共同决定,viewport变换后,z值越小越远,经过反转为depth值,越大越远, depth_buf初始值为无穷大
             float depth = -sub_z_interpolated;
+
+            /*
+            static int cnt = 0;
+            std::cout << cnt++ << "\n";
+            float view_vz[3] = { pl.view_coords[0].z(), pl.view_coords[1].z() ,pl.view_coords[2].z() };
+            Vector2f uv = get_viewspace_bary_interpolated_value(bar, pl.tex_coords, view_vz);
+            std::cout << "pixel:" << subpixels[i][0] << " " << subpixels[i][1] << "\n";
+            std::cout << " z = " << sub_z_interpolated << "\n";*/
             if (depth_buf_ssaa[index][i] > depth) {
+                //debug
+                
+                static int cnt = 0;
+                std::cout << cnt++ << "\n";
+                float view_vz[3] = { pl.view_coords[0].z(), pl.view_coords[1].z() ,pl.view_coords[2].z() };
+                Vector2f uv = get_viewspace_bary_interpolated_value(bar, pl.tex_coords, view_vz);
+                std::cout << "pixel:" << subpixels[i][0] << " " << subpixels[i][1] << "\n";
+              
+                //debug
                 depth_buf_ssaa[index][i] = depth;
                 frag_color = shader.fragment_shader(bar);
+                std::cout << "color[" << i << "] = " << frag_color[0] <<" "<< frag_color[1] << " "<<frag_color[2] << "\n";
                 set_fragment_color(Eigen::Vector2i(x, y), i,frag_color); //仅当此种情况才会设置颜色,其余情况保持buffer不变
             } 
         } 

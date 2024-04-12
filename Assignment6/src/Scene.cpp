@@ -62,83 +62,80 @@ Vector3f Scene::castRay(const Ray &ray, int depth) const
 //    float tnear = kInfinity;
     Vector2f uv;
     uint32_t index = 0;
-    if(intersection.happened) {
+    if (intersection.happened) {
 
         Vector3f hitPoint = intersection.coords;
         Vector3f N = intersection.normal; // normal
         Vector2f st; // st coordinates
         hitObject->getSurfaceProperties(hitPoint, ray.direction, index, uv, N, st);
-//        Vector3f tmp = hitPoint;
+        //        Vector3f tmp = hitPoint;
         switch (m->getType()) {
-            case REFLECTION_AND_REFRACTION:
+        case REFLECTION_AND_REFRACTION:
+        {
+            Vector3f reflectionDirection = normalize(reflect(ray.direction, N));
+            Vector3f refractionDirection = normalize(refract(ray.direction, N, m->ior));
+            Vector3f reflectionRayOrig = (dotProduct(reflectionDirection, N) < 0) ?
+                hitPoint - N * EPSILON :
+                hitPoint + N * EPSILON;
+            Vector3f refractionRayOrig = (dotProduct(refractionDirection, N) < 0) ?
+                hitPoint - N * EPSILON :
+                hitPoint + N * EPSILON;
+            Vector3f reflectionColor = castRay(Ray(reflectionRayOrig, reflectionDirection), depth + 1);
+            Vector3f refractionColor = castRay(Ray(refractionRayOrig, refractionDirection), depth + 1);
+            float kr;
+            fresnel(ray.direction, N, m->ior, kr);
+            hitColor = reflectionColor * kr + refractionColor * (1 - kr);
+            break;
+        }
+        case REFLECTION:
+        {
+            float kr;
+            fresnel(ray.direction, N, m->ior, kr);
+            Vector3f reflectionDirection = reflect(ray.direction, N);
+            Vector3f reflectionRayOrig = (dotProduct(reflectionDirection, N) < 0) ?
+                hitPoint + N * EPSILON :
+                hitPoint - N * EPSILON;
+            hitColor = castRay(Ray(reflectionRayOrig, reflectionDirection), depth + 1) * kr;
+            break;
+        }
+        default:
+        {
+            // [comment]
+            // We use the Phong illumation model int the default case. The phong model
+            // is composed of a diffuse and a specular reflection component.
+            // [/comment]
+            Vector3f lightAmt = 0, specularColor = 0;
+            Vector3f shadowPointOrig = (dotProduct(ray.direction, N) < 0) ?
+                hitPoint + N * EPSILON :
+                hitPoint - N * EPSILON;
+            // [comment]
+            // Loop over all lights in the scene and sum their contribution up
+            // We also apply the lambert cosine law
+            // [/comment]
+            for (uint32_t i = 0; i < get_lights().size(); ++i)
             {
-                Vector3f reflectionDirection = normalize(reflect(ray.direction, N));
-                Vector3f refractionDirection = normalize(refract(ray.direction, N, m->ior));
-                Vector3f reflectionRayOrig = (dotProduct(reflectionDirection, N) < 0) ?
-                                             hitPoint - N * EPSILON :
-                                             hitPoint + N * EPSILON;
-                Vector3f refractionRayOrig = (dotProduct(refractionDirection, N) < 0) ?
-                                             hitPoint - N * EPSILON :
-                                             hitPoint + N * EPSILON;
-                Vector3f reflectionColor = castRay(Ray(reflectionRayOrig, reflectionDirection), depth + 1);
-                Vector3f refractionColor = castRay(Ray(refractionRayOrig, refractionDirection), depth + 1);
-                float kr;
-                fresnel(ray.direction, N, m->ior, kr);
-                hitColor = reflectionColor * kr + refractionColor * (1 - kr);
-                break;
-            }
-            case REFLECTION:
-            {
-                float kr;
-                fresnel(ray.direction, N, m->ior, kr);
-                Vector3f reflectionDirection = reflect(ray.direction, N);
-                Vector3f reflectionRayOrig = (dotProduct(reflectionDirection, N) < 0) ?
-                                             hitPoint + N * EPSILON :
-                                             hitPoint - N * EPSILON;
-                hitColor = castRay(Ray(reflectionRayOrig, reflectionDirection),depth + 1) * kr;
-                break;
-            }
-            default:
-            {
-                // [comment]
-                // We use the Phong illumation model int the default case. The phong model
-                // is composed of a diffuse and a specular reflection component.
-                // [/comment]
-                Vector3f lightAmt = 0, specularColor = 0;
-                Vector3f shadowPointOrig = (dotProduct(ray.direction, N) < 0) ?
-                                           hitPoint + N * EPSILON :
-                                           hitPoint - N * EPSILON;
-                // [comment]
-                // Loop over all lights in the scene and sum their contribution up
-                // We also apply the lambert cosine law
-                // [/comment]
-                for (uint32_t i = 0; i < get_lights().size(); ++i)
-                {
-                    auto area_ptr = dynamic_cast<AreaLight*>(this->get_lights()[i].get());
-                    if (area_ptr)
-                    {
-                        // Do nothing for this assignment
-                    }
-                    else
-                    {
-                        Vector3f lightDir = get_lights()[i]->position - hitPoint;
-                        // square of the distance between hitPoint and the light
-                        float lightDistance2 = dotProduct(lightDir, lightDir);
-                        lightDir = normalize(lightDir);
-                        float LdotN = std::max(0.f, dotProduct(lightDir, N));
-                        Object *shadowHitObject = nullptr;
-                        float tNearShadow = kInfinity;
-                        // is the point in shadow, and is the nearest occluding object closer to the object than the light itself?
-                        bool inShadow = bvh->Intersect(Ray(shadowPointOrig, lightDir)).happened;
-                        lightAmt += (1 - inShadow) * get_lights()[i]->intensity * LdotN;
-                        Vector3f reflectionDirection = reflect(-lightDir, N);
-                        specularColor += powf(std::max(0.f, -dotProduct(reflectionDirection, ray.direction)),
-                                              m->specularExponent) * get_lights()[i]->intensity;
-                    }
+                auto area_ptr = dynamic_cast<AreaLight*>(this->get_lights()[i].get()); //如果指针不指向子类AreaLight,则转换失败,返回空指针
+                //area_ptr!=nullptr 时 Do nothing for this assignment
+                if (area_ptr == nullptr) {
+                    Vector3f lightDir = get_lights()[i]->position - hitPoint;    //hitPoint -> light pos
+
+                    // square of the distance between hitPoint and the light
+                    float lightDistance2 = dotProduct(lightDir, lightDir);
+                    lightDir = normalize(lightDir);
+                    float LdotN = std::max(0.f, dotProduct(lightDir, N));
+                    Object* shadowHitObject = nullptr;
+                    float tNearShadow = kInfinity;
+                    // is the point in shadow, and is the nearest occluding object closer to the object than the light itself?
+                    bool inShadow = bvh->Intersect(Ray(shadowPointOrig, lightDir)).happened;
+                    lightAmt += (1 - inShadow) * get_lights()[i]->intensity * LdotN;
+                    Vector3f reflectionDirection = reflect(-lightDir, N);
+                    specularColor += powf(std::max(0.f, -dotProduct(reflectionDirection, ray.direction)),
+                        m->specularExponent) * get_lights()[i]->intensity;
                 }
-                hitColor = lightAmt * (hitObject->evalDiffuseColor(st) * m->Kd + specularColor * m->Ks);
-                break;
             }
+            hitColor = lightAmt * (hitObject->evalDiffuseColor(st) * m->Kd + specularColor * m->Ks);
+            break;
+        }
         }
     }
 

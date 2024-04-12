@@ -88,7 +88,7 @@ public:
                                      std::numeric_limits<float>::infinity()};
         Vector3f max_vert = Vector3f{-std::numeric_limits<float>::infinity(),
                                      -std::numeric_limits<float>::infinity(),
-                                     -std::numeric_limits<float>::infinity()};
+                                     -std::numeric_limits<float>::infinity()};//装载三角形,找到最大最小顶点以构建bounding volume
         for (int i = 0; i < mesh.Vertices.size(); i += 3) {
             std::array<Vector3f, 3> face_vertices;
             for (int j = 0; j < 3; j++) {
@@ -117,13 +117,13 @@ public:
                                    face_vertices[2], new_mat);
         }
 
-        bounding_box = Bounds3(min_vert, max_vert);
+        bounding_box = Bounds3(min_vert, max_vert);  //整个模型有一个bounding box
 
-        std::vector<Object*> ptrs;
+        std::vector<Object*> ptrs; //Object list 装三角形
         for (auto& tri : triangles)
             ptrs.push_back(&tri);
 
-        bvh = new BVHAccel(ptrs);
+        bvh = new BVHAccel(ptrs);  //对该模型内部细分bounding box
     }
 
     bool intersect(const Ray& ray) { return true; }
@@ -205,36 +205,43 @@ inline bool Triangle::intersect(const Ray& ray, float& tnear,
 {
     return false;
 }
-
+//获得一个三角形面的包围盒
 inline Bounds3 Triangle::getBounds() { return Union(Bounds3(v0, v1), v2); }
 
 inline Intersection Triangle::getIntersection(Ray ray)
 {
+    // Moller - Trumbore
     Intersection inter;
 
-    if (dotProduct(ray.direction, normal) > 0)
+    if (dotProduct(ray.direction, normal) > 0)  //光线与三角形法线方向相同
         return inter;
     double u, v, t_tmp = 0;
-    Vector3f pvec = crossProduct(ray.direction, e2);
-    double det = dotProduct(e1, pvec);
+    Vector3f pvec = crossProduct(ray.direction, e2); // S1 = D * E2
+    double det = dotProduct(e1, pvec);  //判断光线是不是与三角形面平行,若平行视为不相交
     if (fabs(det) < EPSILON)
         return inter;
 
     double det_inv = 1. / det;
-    Vector3f tvec = ray.origin - v0;
-    u = dotProduct(tvec, pvec) * det_inv;
+    Vector3f tvec = ray.origin - v0;  //S = O - P0
+    u = dotProduct(tvec, pvec) * det_inv; //b1 = S.*S1/ (S1.*E)
     if (u < 0 || u > 1)
         return inter;
-    Vector3f qvec = crossProduct(tvec, e1);
-    v = dotProduct(ray.direction, qvec) * det_inv;
+    Vector3f qvec = crossProduct(tvec, e1); //S2 = S * E1
+    v = dotProduct(ray.direction, qvec) * det_inv; //b2 = D.*S2 /(S1.*E)
     if (v < 0 || u + v > 1)
         return inter;
-    t_tmp = dotProduct(e2, qvec) * det_inv;
+    t_tmp = dotProduct(e2, qvec) * det_inv; // t = E2.*S2 /(S1.*E)
 
     // TODO find ray triangle intersection
+    if (t_tmp < 0)
+        return inter;
 
-
-
+    inter.happened = true;
+    inter.coords = ray(t_tmp);
+    inter.normal = normal;
+    inter.distance = t_tmp;
+    inter.obj = this;
+    inter.m = this->m;
 
     return inter;
 }
