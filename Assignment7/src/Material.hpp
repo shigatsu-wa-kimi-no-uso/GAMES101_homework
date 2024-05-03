@@ -6,8 +6,8 @@
 #define RAYTRACING_MATERIAL_H
 
 #include "Vector.hpp"
-
-enum MaterialType { DIFFUSE};
+#include <assert.h>
+enum MaterialType { DIFFUSE, MICROFACET};
 
 class Material{
 private:
@@ -90,7 +90,8 @@ public:
     //Vector3f m_color;
     Vector3f m_emission;
     float ior;
-    Vector3f Kd, Ks;
+    Vector3f Kd, Ks, f0;
+    float roughness;
     float specularExponent;
     //Texture tex;
 
@@ -129,9 +130,9 @@ Vector3f Material::getColorAt(double u, double v) {
 }
 
 
-Vector3f Material::sample(const Vector3f &wi, const Vector3f &N){
+Vector3f Material::sample(const Vector3f &wo, const Vector3f &N){
     switch(m_type){
-        case DIFFUSE:
+    default:
         {
             // uniform sample on the hemisphere
             float x_1 = get_random_float(), x_2 = get_random_float();
@@ -145,12 +146,12 @@ Vector3f Material::sample(const Vector3f &wi, const Vector3f &N){
     }
 }
 
-float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
+inline float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
     switch(m_type){
-        case DIFFUSE:
+    default:
         {
             // uniform sample probability 1 / (2 * PI)
-            if (dotProduct(wo, N) > 0.0f)
+            if (dotProduct(wi, N) > 0.0f)
                 return 0.5f / M_PI;
             else
                 return 0.0f;
@@ -159,20 +160,93 @@ float Material::pdf(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
     }
 }
 
-Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
-    switch(m_type){
-        case DIFFUSE:
-        {
-            // calculate the contribution of diffuse   model
-            float cosalpha = dotProduct(N, wo); //wo为出射光线,应该与法线夹角小于90
-            if (cosalpha > 0.0f) {
-                Vector3f diffuse = Kd / M_PI;
-                return diffuse;
-            }
-            else
-                return Vector3f(0.0f);
-            break;
-        }
+
+inline Vector3f lambert(const float cosNI,const Vector3f& albedo) {
+    if (cosNI > 0.0f) {
+        Vector3f diffuse = albedo / M_PI;   //理想均匀散射  推导可知fr_diff=1/pi   考虑颜色(即RGB各通道的吸收情况)后为fr_diff=albedo/pi
+        return diffuse;
+    } else {
+        return Vector3f(0);
+    }
+}
+
+inline float normalDistribution(float roughness,float cosNH) {
+    //Trowbridge-Reitz GGX
+    float alpha2 = roughness * roughness;
+    float cosNH2 = cosNH * cosNH;
+    float sinNH2 = 1 - cosNH2;
+    float denominator = alpha2 * cosNH2 + sinNH2;
+    denominator *= M_PI * denominator;
+    return alpha2 / denominator;
+}
+
+
+inline float schlickGGX(float cosNV, float roughness) {
+    //Schlick GGX
+    float alphap1 = (roughness + 1);
+    float alphap12 = alphap1 * alphap1;
+    float kDir = alphap12 / 8.0;
+    float denominator = cosNV * (1 - kDir) + kDir;
+    if (denominator < 0.001) {
+        return 1;
+    }
+    return cosNV / denominator;
+}
+
+
+inline float geometry(float cosNR,float cosNI,float roughness) {
+    //Shadowing-masking
+    return schlickGGX(cosNI, roughness) * schlickGGX(cosNR, roughness);
+}
+
+
+inline Vector3f fresnelSchlick(const Vector3f& f0,float cosNI) {
+    float t = 1 - cosNI;
+    float t2 = t * t;
+    float t5 = t2 * t2 * t;
+    return f0 + (Vector3f(1) - f0) * t5;
+}
+
+//注意数值计算问题！！
+inline Vector3f cookTorrance(const Vector3f& kd,const Vector3f& ks,const Vector3f& f0,float cosNI,float cosNR,float cosNH,float roughness) {
+    //颜色:漫反射albedo 镜面反射f0
+    //能量分配:漫反射kd 镜面发射ks
+    cosNI = std::max(cosNI, 0.0f);
+    cosNR = std::max(cosNR, 0.0f);
+    cosNH = std::max(cosNH, 0.0f);
+    Vector3f fd = lambert(cosNI, f0);
+    float d = normalDistribution(roughness, cosNH);
+    float g = geometry(cosNR, cosNI, roughness);
+    float denominator = 4 * cosNR * cosNI;
+    if (denominator == 0) {
+        denominator = 0.000001; //防止除0出现inf -inf 和nan
+    }
+    Vector3f f = fresnelSchlick(f0, cosNI);
+    Vector3f kd_balance = Vector3f(1.0f) - f; //可以用kd,ks=1-kd平衡能量,也可以使用f代替ks,kd=1-f来保持能量守恒
+    Vector3f diff = kd * fd;
+    Vector3f spec =  ks * (d * f * g) / denominator;
+    Vector3f c = spec + diff;
+    return c;
+}
+
+//计算 fr (BRDF)
+inline Vector3f Material::eval(const Vector3f &wi, const Vector3f &wo, const Vector3f &N){
+    switch (m_type) {
+    case DIFFUSE:
+    {
+        // calculate the contribution of diffuse   model
+        float cosNI = dotProduct(N, wi); //wi为入射光线,应该与法线夹角小于90才能发生漫反射
+        return lambert(cosNI, Kd);
+        break;
+    }
+    case MICROFACET:
+    {
+        float cosNR = dotProduct(N, wo);
+        float cosNI = dotProduct(N, wi);
+        float cosNH = dotProduct(N, normalize(wi + wo));
+        return cookTorrance(Kd, Ks, f0, cosNI, cosNR, cosNH, roughness);
+        break;
+    }
     }
 }
 

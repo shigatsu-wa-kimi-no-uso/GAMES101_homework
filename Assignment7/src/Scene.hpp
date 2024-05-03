@@ -20,7 +20,8 @@ public:
     int width = 1280;
     int height = 960;
     double fov = 40;
-    Vector3f backgroundColor = Vector3f(0.235294, 0.67451, 0.843137);
+   // Vector3f backgroundColor = Vector3f(0.235294, 0.67451, 0.843137);
+    Vector3f backgroundColor = Vector3f(0, 1, 0);
     int maxDepth = 1;
     float RussianRoulette = 0.8;
 
@@ -29,7 +30,6 @@ public:
 
     void Add(Object *object) { objects.push_back(object); }
     void Add(std::unique_ptr<Light> light) { lights.push_back(std::move(light)); }
-
     const std::vector<Object*>& get_objects() const { return objects; }
     const std::vector<std::unique_ptr<Light> >&  get_lights() const { return lights; }
     Intersection intersect(const Ray& ray) const;
@@ -43,7 +43,7 @@ public:
                                                    const Vector3f &shadowPointOrig,
                                                    const std::vector<Object *> &objects, uint32_t &index,
                                                    const Vector3f &dir, float specularExponent);*/
-    Vector3f shade(const Intersection& hit, const Ray& wo) const;
+    Vector3f shade(const Intersection& hit, const Vector3f& wo) const;
     // creating the scene (adding objects and lights)
     std::vector<Object* > objects;
     std::vector<std::unique_ptr<Light> > lights;

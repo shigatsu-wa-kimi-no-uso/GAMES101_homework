@@ -23,7 +23,7 @@ void Renderer::Render(const Scene& scene)
     Vector3f eye_pos(278, 273, -800);
 
     // change the spp value to change sample ammount
-    int spp = 128;
+    int spp = 512;
     std::cout << "SPP: " << spp << "\n";
 
     for (uint32_t j = 0; j < scene.height; ++j) {
@@ -36,7 +36,8 @@ void Renderer::Render(const Scene& scene)
 
             Vector3f dir = normalize(Vector3f(-x, y, 1)); //方向为从摄像头发出,而非射向摄像头
             for (int k = 0; k < spp; k++) {
-                framebuffer[j * scene.height + i] += scene.castRay(Ray(eye_pos, dir), 0) / spp;
+                Vector3f c = scene.castRay(Ray(eye_pos, dir), 0);
+                framebuffer[j * scene.height + i] += c / spp;
             }
         }
         UpdateProgress(j / (float)scene.height);
